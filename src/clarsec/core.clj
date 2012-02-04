@@ -109,15 +109,20 @@
 (defn option [default p]
   (<|> p (result default)))
 
-(declare many many1)
-(defn many [parser]
-  (<$> #(if (nil? %) () %)
-       (optional (lazy (many1 parser)))))
+(defn many [p]
+  (make-parser   
+   (partial (fn [ret strn]
+              (let [pfn-result (run-parser-fn p strn)]          
+                (if (and (consumed? pfn-result) (pos? (count (:rest pfn-result))))
+                  (recur (conj ret (:value pfn-result)) (:rest pfn-result))
+                  (consumed (into '() ret) strn)))) [])))
 
 (defn many1 [parser]
   (let-bind [a parser
              as (lazy (many parser))]
             (result (concat [a] as))))
+
+
 
 (defn end-by-m [f p sep]
   (f (let-bind [r p
